@@ -4,6 +4,13 @@
  */
 package SudokuGUI;
 
+import Sudoku.Board;
+import Sudoku.CompleteBoard;
+import Sudoku.Game;
+import Sudoku.PuzzleGenerator;
+import Sudoku.SudokuGame;
+import Sudoku.User;
+
 import java.awt.*;
 import javax.swing.*;
 
@@ -13,6 +20,8 @@ import javax.swing.*;
  */
 public class GameGUI {
     
+    User user = new User("test", "test");
+    //private SudokuGame sudokuGame = new SudokuGame(user);
     private JFrame frame = new JFrame();
     
     private JTextField[][] cells = new JTextField[9][9];
@@ -70,27 +79,86 @@ public class GameGUI {
         JPanel gridPanel = new JPanel(new GridLayout(9, 9));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Padding around the grid
         gridPanel.setBackground(Color.WHITE);
+        
+        PuzzleGenerator puzzleGenerator = new PuzzleGenerator(2);
+        Board completeBoard = puzzleGenerator.getCompleteBoard();
+        Board board = puzzleGenerator.getPuzzleBoard();
 
         // Add text fields for each cell in the Sudoku grid
-        for (int row = 0; row < 9; row++) {
-            for (int col = 0; col < 9; col++) {
+    for (int row = 0; row < 9; row++) {
+        for (int col = 0; col < 9; col++) {
+            if (board.getCell(row, col).getValue() == 0) {
                 JTextField cell = new JTextField(1);
                 cell.setHorizontalAlignment(JTextField.CENTER);
-
-                // Create borders for the cells
-                int top = 1, left = 1, bottom = 1, right = 1;
-
-                // Thicker border for 3x3 grid boundaries
-                if (row % 3 == 0) top = 3;
-                if (col % 3 == 0) left = 3;
-                if (row == 8) bottom = 3; // Bottom border for the last row
-                if (col == 8) right = 3;  // Right border for the last column
-
-                cell.setBorder(BorderFactory.createMatteBorder(top, left, bottom, right, Color.BLACK));
+                this.applyCellStyling(cell, row, col);
                 gridPanel.add(cell);
+                
+                // Action Listener to detect user input
+                int finalRow = row; // Required to use row inside lambda
+                int finalCol = col; // Required to use col inside lambda
+                cell.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                    @Override
+                    public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                        checkInput(cell, finalRow, finalCol, completeBoard);
+                    }
+
+                    @Override
+                    public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                        checkInput(cell, finalRow, finalCol, completeBoard);
+                    }
+
+                    @Override
+                    public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                        checkInput(cell, finalRow, finalCol, completeBoard);
+                    }
+                });
+            }
+            else {
+                JLabel cellLabel = new JLabel(String.valueOf(board.getCell(row, col).getValue()));
+                cellLabel.setHorizontalAlignment(JLabel.CENTER);
+                this.applyCellStyling(cellLabel, row, col);
+                gridPanel.add(cellLabel);
             }
         }
+    }
         
         return gridPanel;
+    }
+    
+    // Method to check the input and update the cell if correct
+private void checkInput(JTextField cell, int row, int col, Board completeBoard) {
+    String text = cell.getText();
+    if (!text.isEmpty()) {
+        try {
+            int value = Integer.parseInt(text);
+            if (value == completeBoard.getCell(row, col).getValue()) {
+                // If the input is correct, make the cell non-editable
+                cell.setEditable(false);
+                cell.setForeground(Color.GREEN); // Optional: Change text color to indicate correctness
+            } else {
+                cell.setForeground(Color.RED); // Optional: Indicate incorrect input
+            }
+        } catch (NumberFormatException ex) {
+            // Handle non-numeric input
+            cell.setForeground(Color.RED); // Optional: Indicate incorrect input
+        }
+    }
+}
+
+    private void applyCellStyling(JComponent cell, int row, int col) {
+        // Set font size and style
+        Font font = new Font("Arial", Font.BOLD, 22); // Adjust font name, style, and size as needed
+        cell.setFont(font);
+
+        // Create borders for the cells
+        int top = 1, left = 1, bottom = 1, right = 1;
+
+        // Thicker border for 3x3 grid boundaries
+        if (row % 3 == 0) top = 3;
+        if (col % 3 == 0) left = 3;
+        if (row == 8) bottom = 3; // Bottom border for the last row
+        if (col == 8) right = 3;  // Right border for the last column
+
+        cell.setBorder(BorderFactory.createMatteBorder(top, left, bottom, right, Color.BLACK));
     }
 }
