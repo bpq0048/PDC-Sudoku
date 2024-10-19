@@ -33,6 +33,10 @@ public class Cell {
         this.isEditable = isEditable;
     }
 
+    public Cell() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
     /**
      * Retrieves the current value of the cell.
      * 
