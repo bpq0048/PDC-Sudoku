@@ -35,87 +35,6 @@ public class SudokuGame extends Game {
     }
     
     /**
-     * Initializes and runs the game loop for a round of Sudoku.
-     * 
-     * This method manages the main gameplay loop, where it prompts the user for input,
-     * checks the validity of their moves, updates the board, and handles game states
-     * such as checking for win conditions or losing lives.
-     */
-    private void play() {
-        // Main game loop: continues to run as long as the board is not completely filled and the player still has lives remaining
-        while (!board.isComplete() && lives != 0) {
-            
-            // Displays the current state of the Sudoku board to the player
-            System.out.println();
-            board.printBoard();
-            
-            // Prompts the user to input a row number for the cell they wish to fill
-            System.out.print("Select the row (1-9): ");
-            int row = getValidInput(1, 9);
-            if (row == -1) continue; // Restarts the loop if user paused the game or picked a hint
-            
-            // Prompts the user to input a column number for the cell they wish to fill
-            System.out.print("Select the column (1-9): ");
-            int col = getValidInput(1, 9);
-            if (col == -1) continue; // Restarts the loop if user paused the game or picked a hint
-            
-            // Checks if the selected cell is already filled; if so, prompts the user to select a different cell
-            if (!board.isEmptyCell(row-1, col-1)) {
-                System.out.println("That spot is already filled! Please select a different cell.");
-                continue; // Skip the rest of the loop iteration and prompt for input again
-            }
-            
-            // Prompts the user to input a number to place in the selected cell
-            System.out.print("Enter the number (1-9): ");
-            int num =getValidInput(1, 9);
-            if (num == -1) continue; // Restarts the loop if user paused the game or picked a hint
-            
-            // Verifies if all input information is correct
-            System.out.println("Are you sure you want to add " + num + " at (" + row + "," + col + ")?");
-            System.out.println("  (1) Yes");
-            System.out.println("  (2) No");
-            int input = getValidInput(1, 2);
-            if (input == 2 || input == -1) continue; // Restarts the loop if user paused the game, picked a hint, or picked no
-            
-            // Checks the user's move by comparing their input to the completed board's cell value
-            if (completeBoard.getCell(row-1, col-1).getValue() == num) {
-                // If correct, update the board with the user's input
-                board.updateCell(row-1, col-1, num);
-                System.out.println("That's Correct!");
-            }
-            else {
-                // If incorrect, decrements the user's lives
-                lives--;
-                System.out.println("Incorrect! Lives remaining: " + lives);
-            }
-        }
-        
-        // Ends the game
-        this.endGame();
-    }
-    
-    /**
-     * Prompts the user to select the difficulty level for the current round of Sudoku.
-     * 
-     * The method gets a chosen difficulty level, which is then used to determine the number of
-     * cells removed from a complete Sudoku board to create the puzzle.
-     * 
-     * @return An integer representing the difficulty level chosen by the user.
-     */
-    private int selectDifficulty() {
-        // Display the difficulty level options to the user
-        System.out.println("\nPlease select your difficulty level:");
-        System.out.println("  (1) Beginner");
-        System.out.println("  (2) Easy");
-        System.out.println("  (3) Medium");
-        System.out.println("  (4) Hard");
-        System.out.println("  (5) Expert");
-        
-        // Prompts the user for a valid input and returns the selected difficulty
-        return getValidInput(1, 5);
-    }
-    
-    /**
      * Gives users a chance to load a previously saved game (given a game is saved).
      * 
      * Checks if a user has a saved Sudoku game, if they do it gives them the option to load and continue the game.
@@ -265,7 +184,6 @@ public class SudokuGame extends Game {
         this.resetTimer();       // Resets the timer
         this.startTimer();       // Starts timer
         this.gameRunning = true; // Sets game running flag to true
-        this.play();             // Run the main game method
     }
 
     /**
@@ -303,14 +221,6 @@ public class SudokuGame extends Game {
             // Notify the user they lost the game
             System.out.println("\nUh oh! You lost!");
         }
-        
-        // Prompts the user to play another round or exit the game
-        System.out.println("\nWould you like to play again?");
-        System.out.println("  (1) Yes, I would like another puzzle");
-        System.out.println("  (2) No, I would like to exit the game");
-        int userChoice = getValidInput(1, 2); // Get user input for their choice
-        
-        if (userChoice == 2) exitGame(); // Exits game if they choose to exit
         
         // Reset the game if the user wants to play again
         this.setupBoard();

@@ -5,7 +5,6 @@
 package Sudoku;
 
 import java.util.HashMap;
-import java.util.Scanner;
 
 /**
  * Abstract class representing a game of Sudoku.
@@ -31,7 +30,6 @@ public abstract class Game {
     protected boolean gameRunning;             // A flag indicating if game is running
     
     // Variables for handling user inputs and saving data
-    protected Scanner scan;                    // Scanner to read user input
     protected FileHandler fileHandler;         // Handler for reading and writing user data to files
     protected HashMap<String, User> users;     // Map of users for storing and accessing user data
     
@@ -43,7 +41,7 @@ public abstract class Game {
      * 
      * @param user The user who is playing the game.
      */
-    public Game(User user) {
+    public Game(User user, int difficulty) {
         // Initializes variables
         this.board = new Board();
         this.completeBoard = new CompleteBoard();
@@ -52,16 +50,46 @@ public abstract class Game {
         this.hint = new HintSystem();
         
         this.user = user;
-        this.scan = new Scanner(System.in);
-        this.fileHandler = new FileHandler();
+        this.difficulty = difficulty;
         
+        this.fileHandler = new FileHandler();
         this.users = fileHandler.readUserData(); // Loads existing data from file
     }
     
     // Abstract methods to be implemented by subclasses
-    protected abstract void setupBoard();  // Method to set up the board
-    protected abstract void startGame();   // Method to start the game
-    protected abstract void endGame();     // Method to end the game
+    public void setupBoard() {
+        // Let user load saved game if one exists
+        loadGame();
+        
+        // Return if a board has been loaded
+        if (useSavedGame) {
+            return;
+        }
+        
+        // Prompts the user to select the difficulty level and stores the selection
+        this.difficulty = selectDifficulty();
+        
+        // Initalizes the number of lives and hints a user has
+        this.lives = 3;
+        this.hint.setHintCount(3);
+        
+        // Generates  Sudoku board
+        puzzleGenerator = new PuzzleGenerator(difficulty);  // Generates puzzle by making a complete board and removing cells based on difficulty
+        completeBoard = puzzleGenerator.getCompleteBoard(); // Gets the fully complete board
+        board = puzzleGenerator.getPuzzleBoard();           // Gets the puzzle board for users to solve
+    }
+    
+    public void startGame() {
+        setupBoard();
+        startTimer();
+        gameRunning = true;
+    }
+    
+    public void endGame() {
+        stopTimer();
+        gameRunning = false;
+        updateBestTime();
+    }
 
     /**
      * Starts the game timer.
@@ -104,82 +132,17 @@ public abstract class Game {
      * @param upperRange The upper bound of the valid input range (inclusive).
      * @return A valid integer input within the specified range or -1.
      */
-    protected int getValidInput(int lowerRange, int upperRange) {
-        final String EXIT_COMMAND = "X";
-        final String PAUSE_COMMAND = "P";
-        final String HINT_COMMAND = "H";
-
-        while (true) {
-            String input = scan.nextLine().trim(); // Trim to remove leading/trailing spaces
-
-            switch (input.toUpperCase()) {
-                case EXIT_COMMAND: // Exits the game if 'X' is pressed
-                    this.exitGame();
-                    break;
-
-                case PAUSE_COMMAND:
-                    this.pauseGame(); // Pauses the game is 'P' is pressed
-                    return -1; // Returning -1 as a special value to indicate a special request
-
-                case HINT_COMMAND:
-                    this.getHint(); // Provides the user a hint if 'H' is pressed
-                    return -1; // Returning -1 as a special value to indicate a special request
-
-                default:
-                    // Attempt to parse the input as an integer
-                    try {
-                        int numInput = Integer.parseInt(input);
-                        if (numInput >= lowerRange && numInput <= upperRange) {
-                            return numInput; // Valid input within range
-                        } else {
-                            System.out.println("Please enter a number within the range " + lowerRange + " to " + upperRange + ".");
-                        }
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid input. Please enter a valid number.");
-                    }
-                    break;
+    protected int validInput(String input) {
+        try {
+            int numInput = Integer.parseInt(input.trim());
+            if (1 <= numInput && numInput <= 9) {
+                return numInput;
             }
-        }
-    }
-    
-    /**
-     * Provides the value of a given cell as a hint.    
-     * 
-     * The method prompts a user for the cell that they wish to use the hint on, 
-     * then provides the value found in that cell.
-     */
-    private void getHint() {
-        // Checks if user has any hints remaining
-        if (hint.getHintCount() == 0) {
-            System.out.println("\nNo hints remaining!");
-            return; // Exits method is user has no hints left
+        } catch (NumberFormatException e) {
+            return 0;
         }
         
-        // Prompts the user if they would like to use a hint
-        System.out.println("\n -> Hints Remaining: " + hint.getHintCount());
-        System.out.println("Are you sure you would like a hint?");
-        System.out.println("  (1) Yes");
-        System.out.println("  (2) No");
-        if (getValidInput(1, 2) == 2) return; // Exits method if user decides not to use a hint
-        
-        // Prompts the user to input a row number for the cell they wish to fill
-        System.out.print("Please select the row (1-9): ");
-        int row = getValidInput(1, 9) - 1;
-
-        // Prompts the user to input a column number for the cell they wish to fill
-        System.out.print("Select the column (1-9): ");
-        int col = getValidInput(1, 9) - 1;
-        
-        // Confirms that the user wishes to use their hint for that cell
-        System.out.println("\nAre you sure you want a hint for " + "(" + (row+1) + "," + (col+1) + ")?");
-        System.out.println("  (1) Yes");
-        System.out.println("  (2) No");
-        if (getValidInput(1, 2) == 2) return;
-        
-        // Reveal hint
-        int cellValue = hint.getHint(row, col, completeBoard);
-        System.out.println("\nThe value of " + "(" + (row+1) + "," + (col+1) + ") is " + cellValue + "!");
-        System.out.println(" -> Hints Left: " + hint.getHintCount());
+        return 0;
     }
     
     /**
@@ -190,67 +153,13 @@ public abstract class Game {
      * to resume the game or quit. 
      */
     private void pauseGame() {
-        boolean isPaused = true; // Initialize pause state
         timer.pause();           // Pauses the timer
-        
-        // Prints out a box with information for the user
-        System.out.println();
-        
-        // Array of text for the box
-        String[] pauseInfo = {
-            "The game is now paused!",
-            "Current time: " + timer.getTime(),
-            " -> Type 'P' to resume the game",
-            " -> Type 'X' to exit the game"
-        };
-
-        // Find the length of the longest string for the box width
-        int maxLength = 0;
-        for (String line : pauseInfo) {
-            if (line.length() > maxLength) {
-                maxLength = line.length();
-            }
-        }
-
-        int boxWidth = maxLength + 4; // Adding padding for the box borders
-
-        // Print the top border of the box
-        System.out.print("    ");
-        for (int i = 0; i < boxWidth; i++) {
-            System.out.print("-");
-        }
-        System.out.println();
-
-        // Print each line of controls within the box
-        for (String line : pauseInfo) {
-            System.out.println("    | " + line + " ".repeat(boxWidth - line.length() - 3) + "|");
-        }
-
-        // Print the bottom border of the box
-        System.out.print("    ");
-        for (int i = 0; i < boxWidth; i++) {
-            System.out.print("-");
-        }
-        System.out.println();
-        
-        // Keeps the game paused until user enters 'P' or 'X'
-        while (isPaused) {
-            String input = scan.nextLine().trim(); // Gets user input
-
-            // If the user inputs 'P', the game unpauses
-            if (input.equalsIgnoreCase("P")) {
-                isPaused = false; // Unpauses the game
-            }
-            else if (input.equalsIgnoreCase("X")) {
-                exitGame(); // Exits game
-            }
-            else {
-                System.out.print("Invalid input. Enter 'P' to resume the game or 'X' to exit: ");
-            }
-        }
-        
-        // Resumes the timer
-        timer.resume();
+        this.gameRunning = false;
+    }
+    
+    private void resumeGame() {
+        timer.resume();           // Pauses the timer
+        this.gameRunning = true;
     }
     
     /**
@@ -259,50 +168,13 @@ public abstract class Game {
      * If the user has already saved a board, the user will have to confirm if they wish to override that save.
      * User data is saved regardless before exiting the game.
      */
-    protected void exitGame() {
-        // Checks if the board is not complete and a game is ongoing
-        if (!board.isComplete() && gameRunning) {
-            // Prompts the user to save the current board
-            System.out.println("\nWould you like to save the current board before exiting?");
-            System.out.println("  (1) Yes");
-            System.out.println("  (2) No");
-            int userChoice = getValidInput(1, 2); // Get user input for saving the board
-
-            // If the user chooses to save the board
-            if (userChoice == 1) {
-                if (fileHandler.checkForSavedBoard(user)) {
-                    System.out.println("You appear to already have a board saved, continuing would override that save.");
-                    System.out.println("  (1) Yes, I would like to override that save");
-                    System.out.println("  (2) No");
-                    userChoice = getValidInput(1, 2); // Get user input for overriding the save
-                    
-                    if (userChoice == 2) {
-                        // Notifies the user that the game is exiting without saving
-                        System.out.println("\nExiting Sudoku game without saving. See you next time!");
-
-                        // Saves the user data before exiting
-                        fileHandler.writeUserData(users);
-                        System.exit(0); // Exiting the program
-                    }
-                }
-
-                // Saves the current game state if there is not a game saved or the user chooses to override save
-                this.saveGame();
-                System.out.println("Sudoku board has been saved.");
-            }
-            
+    protected void exitGame(boolean saveBoard) {
+        if (saveBoard && !board.isComplete()) {
+            saveGame();
         }
-        
-        // Display all of users best times
-        System.out.println("\nYour best times are: ");
-        user.printAllTimes();
-        
-        // Notifies the user that the game is exiting
-        System.out.println("\nExiting Sudoku game. See you next time!");
         
         // Saves the user data before exiting
         fileHandler.writeUserData(users);
-        System.exit(0); // Exiting the program
     }
     
     /**
@@ -322,4 +194,52 @@ public abstract class Game {
                 board.getGrid(), 
                 completeBoard.getGrid());
     }
+    
+    
+    // -- Getters for game properties --
+
+    public User getUser() {
+        return user;
+    }
+
+    public Board getBoard() {
+        return board;
+    }
+
+    public CompleteBoard getCompleteBoard() {
+        return completeBoard;
+    }
+
+    public int getDifficulty() {
+        return difficulty;
+    }
+
+    public Timer getTimer() {
+        return timer;
+    }
+
+    public HintSystem getHint() {
+        return hint;
+    }
+
+    public int getLives() {
+        return lives;
+    }
+
+    public boolean isGameRunning() {
+        return gameRunning;
+    }
+
+    public FileHandler getFileHandler() {
+        return fileHandler;
+    }
+
+    public HashMap<String, User> getUsers() {
+        return users;
+    }
+    
+    public void setDifficulty(int difficulty) {
+        this.difficulty = difficulty;
+    }
 }
+
