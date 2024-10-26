@@ -16,7 +16,7 @@ import java.util.HashMap;
  * 
  * @author paige
  */
-public abstract class Game {
+public class Game {
     
     // Variables for a game of Sudoku
     protected User user;                       // The current user playing the game
@@ -28,6 +28,7 @@ public abstract class Game {
     protected HintSystem hint;                 // System to manage hint functionality
     protected int lives;                       // Number of lives remaining in the game
     protected boolean gameRunning;             // A flag indicating if game is running
+    protected boolean useSavedGame;
     
     // Variables for handling user inputs and saving data
     protected FileHandler fileHandler;         // Handler for reading and writing user data to files
@@ -40,6 +41,7 @@ public abstract class Game {
      * file handler, and hint system, and then sets up the board and starts the game.
      * 
      * @param user The user who is playing the game.
+     * @param difficulty
      */
     public Game(User user, int difficulty) {
         // Initializes variables
@@ -54,20 +56,39 @@ public abstract class Game {
         
         this.fileHandler = new FileHandler();
         this.users = fileHandler.readUserData(); // Loads existing data from file
+    
+        this.setupBoard();
+        this.startGame();
+    }
+    
+    public Game(User user) {
+        // Initializes variables
+        this.board = new Board();
+        this.completeBoard = new CompleteBoard();
+        this.gameRunning = false;
+        this.timer = new Timer();
+        this.hint = new HintSystem();
+        
+        this.user = user;
+        
+        this.fileHandler = new FileHandler();
+        this.users = fileHandler.readUserData();
+        
+        this.useSavedGame = true;
+        
+        this.setupBoard();
+        this.startGame();
     }
     
     // Abstract methods to be implemented by subclasses
     public void setupBoard() {
-        // Let user load saved game if one exists
-        loadGame();
-        
         // Return if a board has been loaded
         if (useSavedGame) {
+            // Let user load saved game if one exists
+            loadGame();
+
             return;
         }
-        
-        // Prompts the user to select the difficulty level and stores the selection
-        this.difficulty = selectDifficulty();
         
         // Initalizes the number of lives and hints a user has
         this.lives = 3;
@@ -77,6 +98,21 @@ public abstract class Game {
         puzzleGenerator = new PuzzleGenerator(difficulty);  // Generates puzzle by making a complete board and removing cells based on difficulty
         completeBoard = puzzleGenerator.getCompleteBoard(); // Gets the fully complete board
         board = puzzleGenerator.getPuzzleBoard();           // Gets the puzzle board for users to solve
+    }
+    
+    private void loadGame() {
+        
+        // Loads saved data in a HashMap
+        HashMap<String, String> boardData = fileHandler.loadSavedBoard(user);
+        
+        
+        // Initializes all variables with saved data
+        this.difficulty = Integer.parseInt(boardData.get("difficulty"));
+        this.lives = Integer.parseInt(boardData.get("lives"));
+        this.timer.setElapsedTime(Long.parseLong(boardData.get("elapsedTime")));
+        this.hint.setHintCount(Integer.parseInt(boardData.get("hints")));
+        this.board.loadBoard(boardData.get("puzzleBoard"));
+        this.completeBoard.loadBoard(boardData.get("completedBoard"));
     }
     
     public void startGame() {
@@ -123,29 +159,6 @@ public abstract class Game {
     }
     
     /**
-     * Prompts the user for an integer input within a specified range and validates the input.
-     * 
-     * This method will continuously prompt the user until a valid integer input is provided or 
-     * the user chooses to exit the input loop by entering 'X'.
-     * 
-     * @param lowerRange The lower bound of the valid input range (inclusive).
-     * @param upperRange The upper bound of the valid input range (inclusive).
-     * @return A valid integer input within the specified range or -1.
-     */
-    protected int validInput(String input) {
-        try {
-            int numInput = Integer.parseInt(input.trim());
-            if (1 <= numInput && numInput <= 9) {
-                return numInput;
-            }
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-        
-        return 0;
-    }
-    
-    /**
      * Pauses the Sudoku game.
      * 
      * This method pauses the game by pausing the timer used to measure how long it takes a user to solve the puzzle.
@@ -168,7 +181,7 @@ public abstract class Game {
      * If the user has already saved a board, the user will have to confirm if they wish to override that save.
      * User data is saved regardless before exiting the game.
      */
-    protected void exitGame(boolean saveBoard) {
+    public void exitGame(boolean saveBoard) {
         if (saveBoard && !board.isComplete()) {
             saveGame();
         }
@@ -184,7 +197,7 @@ public abstract class Game {
      * the user's best time, number of lives, hint count, and the current and completed
      * boards.
      */
-    private void saveGame() {
+    public void saveGame() {
         fileHandler.saveSudokuBoard(
                 user, 
                 difficulty,
@@ -205,6 +218,10 @@ public abstract class Game {
     public Board getBoard() {
         return board;
     }
+    
+    public PuzzleGenerator getPuzzleGenerator() {
+        return puzzleGenerator;
+    }
 
     public CompleteBoard getCompleteBoard() {
         return completeBoard;
@@ -217,13 +234,25 @@ public abstract class Game {
     public Timer getTimer() {
         return timer;
     }
+    
+    public void setTimer(Timer timer) {
+        this.timer = timer;
+    }
 
     public HintSystem getHint() {
         return hint;
     }
+    
+    public void setHints(int hint) {
+        this.hint.setHintCount(hint);
+    }
 
     public int getLives() {
         return lives;
+    }
+
+    public void setLives(int lives) {
+        this.lives = lives;
     }
 
     public boolean isGameRunning() {
@@ -241,5 +270,6 @@ public abstract class Game {
     public void setDifficulty(int difficulty) {
         this.difficulty = difficulty;
     }
+    
+    
 }
-

@@ -4,94 +4,133 @@
  */
 package SudokuGUI;
 
+import Sudoku.Board;
+import Sudoku.CompleteBoard;
+import Sudoku.FileHandler;
+import Sudoku.Timer;
 import Sudoku.User;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.HashMap;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.util.HashMap;
 
-/**
- *
- * @author paige
- */
 public class HomePageGUI extends JPanel {
     
     private User user;
-    private JComboBox<String> difficultyDropdown;
-    private HashMap<String, Integer> difficultyLevels;
+    private DifficultyGUI difficultyGUI; // Use the updated DifficultyGUI class
     private JButton newGameButton;
-    
+    private JButton continueGameButton;
     private CardLayout cardLayout;
     private JPanel cardPanel;
-    
-    public HomePageGUI(User user, CardLayout cardLayout, JPanel cardPanel) {
+    private JFrame frame;
+    private FileHandler fileHandler;
+
+    public HomePageGUI(User user) {
         this.user = user;
-        this.cardLayout = cardLayout;
-        this.cardPanel = cardPanel;
-        
-        // Initialize the difficulty map
-        difficultyLevels = new HashMap<>();
-        difficultyLevels.put("Beginner", 1);
-        difficultyLevels.put("Easy", 2);
-        difficultyLevels.put("Medium", 3);
-        difficultyLevels.put("Hard", 4);
-        difficultyLevels.put("Expert", 5);
-        
-        initialize();
+        this.fileHandler = new FileHandler();
+
+        initializeFrame();
     }
-    
-    private void initialize() {
+
+    private void initializeFrame() {
+        this.frame = new JFrame("PLAY SUDOKU.");
+        cardPanel = new JPanel();
+        cardLayout = new CardLayout();
+        cardPanel.setLayout(cardLayout);
+
+        cardPanel.add(this, "homePage");
+
+        initializeHomePageComponents();
+
+        frame.add(cardPanel);
+        frame.pack();
+        frame.setSize(600, 700);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+
+        cardLayout.show(cardPanel, "homePage");
+    }
+
+    private void initializeHomePageComponents() {
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
-        // Label for home page title
         JLabel homeLabel = new JLabel("PLAY SUDOKU.", JLabel.CENTER);
         homeLabel.setFont(new Font("Arial", Font.BOLD, 30));
         homeLabel.setBorder(new EmptyBorder(20, 10, 20, 10));
         add(homeLabel, BorderLayout.NORTH);
-        
-        // Panel for difficulty selection and new game button
-        JPanel difficultyPanel = new JPanel();
-        difficultyPanel.setLayout(new FlowLayout());
-        difficultyPanel.setBackground(Color.WHITE);
-        
-        // Add difficulty dropdown
-        JLabel difficultyLabel = new JLabel("Select Difficulty");
-        difficultyLabel.setFont(new Font("Arial", Font.PLAIN, 20));
-        difficultyPanel.add(difficultyLabel);
-        
-        String[] difficulties = {"Beginner", "Easy", "Medium", "Hard", "Expert"};
-        difficultyDropdown = new JComboBox<>(difficulties);
-        difficultyDropdown.setFont(new Font("Arial", Font.PLAIN, 18));
-        difficultyPanel.add(difficultyDropdown);
-        
-        // Add New Game button
+
+        difficultyGUI = new DifficultyGUI(); // Instantiate the updated DifficultyGUI
+        add(difficultyGUI, BorderLayout.CENTER);
+
         newGameButton = new JButton("New Game");
         newGameButton.setFont(new Font("Arial", Font.BOLD, 20));
-        difficultyPanel.add(newGameButton);
+        continueGameButton = new JButton("Continue Game");
+        continueGameButton.setFont(new Font("Arial", Font.BOLD, 20));
 
-        add(difficultyPanel, BorderLayout.CENTER);
-        
-        // Action listener for the New Game button
-        newGameButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String selectedDifficulty = (String) difficultyDropdown.getSelectedItem();
-                int difficultyValue = difficultyLevels.get(selectedDifficulty);
-                startNewGame(difficultyValue);
-            }
-        });
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(newGameButton);
+        buttonPanel.add(continueGameButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        newGameButton.addActionListener(e -> startNewGame());
+        continueGameButton.addActionListener(e -> loadGame());
+
+        // Check for a saved game and set the continueGameButton visibility
+        if (fileHandler.checkForSavedBoard(user)) {
+            continueGameButton.setVisible(true); // Show button if a saved game exists
+        } else {
+            continueGameButton.setVisible(false); // Hide if no saved game
+        }
     }
 
-    // Method to start a new game with the selected difficulty
-    private void startNewGame(int difficulty) {
-        // Logic to create and start a new game with the selected difficulty
-        System.out.println("Starting a new game with difficulty: " + difficulty);
+    private void startNewGame() {
+        int difficultyValue = difficultyGUI.getSelectedDifficultyValue();
+        if (difficultyValue != -1) {
+            GameGUI gamePage = new GameGUI(frame, cardLayout, user, difficultyValue);
+            cardPanel.add(gamePage, "gamePage");
+            cardLayout.show(cardPanel, "gamePage");
+        }
+    }
+    
+    private void loadGame() {
+        // Checks if user has a saved game
+        if (!fileHandler.checkForSavedBoard(user)) {
+            continueGameButton.setVisible(false); // Hide button if no saved game
+            return; // No saved game found
+        }
+
+        // Load saved data in a HashMap
+        HashMap<String, String> boardData = fileHandler.loadSavedBoard(user);
+
+        // Initialize saved data
+        int savedDifficulty = Integer.parseInt(boardData.get("difficulty"));
+        int savedLives = Integer.parseInt(boardData.get("lives"));
+        Timer savedTimer = new Timer();
+        savedTimer.setElapsedTime(Long.parseLong(boardData.get("elapsedTime")));
+        int savedHints = Integer.parseInt(boardData.get("hints"));
         
-        GameGUI gamePage = new GameGUI(user);
-        cardPanel.add(gamePage, "gamePage");
-        cardLayout.show(cardPanel, "gamePage");
+        
+        Board board = new Board();
+        board.loadBoard(boardData.get("puzzleBoard"));
+        
+        Board completeBoard = new CompleteBoard();
+        completeBoard.loadBoard(boardData.get("completedBoard"));
+
+        // Show the continue game button since a saved game exists
+        continueGameButton.setVisible(true);
+
+        // Example dialog to confirm loading the game
+        int choice = JOptionPane.showConfirmDialog(frame, "You have a saved game! Do you want to continue?", "Load Game", JOptionPane.YES_NO_OPTION);
+        if (choice == JOptionPane.YES_OPTION) {
+        // Load the game with the saved data
+            GameGUI gamePage = new GameGUI(frame, cardLayout, user);
+            cardPanel.add(gamePage, "gamePage");
+            cardLayout.show(cardPanel, "gamePage");
+        } else {
+            // Optionally handle "No" choice
+        }
     }
 }
