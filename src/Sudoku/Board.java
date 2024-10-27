@@ -57,31 +57,6 @@ public class Board {
     }
     
     /**
-     * Prints the current state of the board to the console.
-     * 
-     * Empty cells (with a value of 0) are represented by an underscore ('_'), and 
-     * non-empty cells show their value. The board is formatted with grid lines 
-     * for better readability.
-     */
-    public void printBoard() {
-        System.out.println("       1 2 3   4 5 6   7 8 9");
-        for (int i = 0; i < 9; i++) {
-            if (i % 3 == 0 && i != 0) {
-                System.out.println("       ------+-------+------");
-            }
-            System.out.print("    " + (i+1) + "  ");
-            for (int j = 0; j < 9; j++) {
-                if (j % 3 == 0 && j != 0) {
-                    System.out.print("| ");
-                }
-                System.out.print((grid[i][j].getValue() == 0 ? "_" : grid[i][j].getValue()) + " ");
-            }
-            System.out.println();
-        }
-        System.out.println();
-    }
-    
-    /**
      * Checks if the board is completely filled with non-zero values.
      * 
      * @return true if all cells are filled; false otherwise.
@@ -146,5 +121,16 @@ public class Board {
      */
     public void setGrid(Cell[][] grid) {
         this.grid = grid;
+    }
+    
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                sb.append(grid[i][j].getValue());
+            }
+        }
+        return sb.toString();
     }
 }

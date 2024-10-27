@@ -4,67 +4,71 @@
  */
 package SudokuGUI;
 
-import Sudoku.FileHandler;
+import Sudoku.DBHandler;
 import Sudoku.User;
 
-import java.awt.CardLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.HashMap;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JTextField;
+import javax.swing.*;
 
 /**
- *
+ * Handles user authentication actions, such as login and sign up.
+ * 
+ * Implements ActionListener to respond to button clicks.
+ * 
  * @author paige
  */
 class AuthActionListener implements ActionListener {
     
-    private String mode;
+    private String mode;                    // Mode to set to "login" or "signup"
+    private JTextField usernameField;       // Field for entering username
+    private JPasswordField passwordField;   // Field for entering password
+    private JLabel messageLabel;            // Label for displaying messages to user
+    private JFrame frame;                   // The current frame to close on successful login/signup
     
-    private JTextField usernameField;
-    private JPasswordField passwordField;
-    private JLabel messageLabel;
+    private DBHandler dbHandler;            // Database handler for user data operations
     
-    private JFrame frame; 
-    
-    private FileHandler fileHandler;     // Handler for reading and writing user data to files
-    private HashMap<String, User> users; // Map of users for storing and accessing user data
-    
-    
+    /**
+     * Constructor for AuthActionListener
+     * 
+     * @param mode The mode of authentication ("login" or "signup").
+     * @param usernameField The text field for username input.
+     * @param passwordField The password field for password input.
+     * @param messageLabel The label for displaying messages to the user. 
+     * @param frame  The current JFrame to be disposed on success.
+     */
     public AuthActionListener(
             String mode, JTextField usernameField, JPasswordField passwordField, 
             JLabel messageLabel, JFrame frame) {
         
         this.mode = mode;
-        
         this.usernameField = usernameField;
         this.passwordField = passwordField;
         this.messageLabel = messageLabel;
         this.frame = frame;
         
-        this.fileHandler = new FileHandler();
-        this.users = fileHandler.readUserData();
+        this.dbHandler = new DBHandler(); // Initialize DBHandler for database operations
     }
     
     @Override
     public void actionPerformed(ActionEvent e) {
+        // Get trimmed username and password from input fields
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword()).trim();
 
+        // Validate username input
         if (username.isEmpty() || username.contains(" ")) {
             messageLabel.setText("Username cannot be empty or contain spaces.");
             return;
         }
         
+        // Validate password input
         if (password.isEmpty() || password.contains(" ")) {
             messageLabel.setText("Password cannot be empty or contain spaces.");
             return;
         }
 
+        // Determine action based on mode
         if ("login".equalsIgnoreCase(mode)) {
             handleLogin(username, password);
         } else if ("signup".equalsIgnoreCase(mode)) {
@@ -72,13 +76,21 @@ class AuthActionListener implements ActionListener {
         }
     }
     
+    /**
+     * Handle user login process. 
+     * 
+     * @param username The username entered by the user.
+     * @param password The password entered by the user.
+     */
     private void handleLogin(String username, String password) {
-        if (users.containsKey(username)) {
-            User user = users.get(username);
-
+        User user = dbHandler.getUser(username); // Retrieve user from the database
+        
+        if (user != null) { // If user exists
+            // Check if the provided password matches the stored password
             if (user.getPassword().equals(password)) {
                 messageLabel.setText("Login successful! Redirecting...");
-                this.toHomePage(user);
+                this.toHomePage(user); // Redirect to home page on success
+                
             } else {
                 messageLabel.setText("Incorrect password. Please try again.");
             }
@@ -87,24 +99,34 @@ class AuthActionListener implements ActionListener {
         }
     }
 
+    /**
+     * Handles user signup process.
+     * 
+     * @param username The username entered by the user.
+     * @param password The password entered by the user.
+     */
     private void handleSignUp(String username, String password) {
-        if (users.containsKey(username)) {
+        User user = dbHandler.getUser(username); // Check if the user already exists
+        
+        if (user != null) { // If user already exists
             messageLabel.setText("Username already taken. Please try a different one.");
         } else {
+            // Create a new user and add to the database
             User newUser = new User(username, password);
-            users.put(username, newUser);
-            
-            fileHandler.writeUserData(users);
+            dbHandler.addUser(username, password);
             
             messageLabel.setText("Sign-up successful! Redirecting...");
-            this.toHomePage(newUser);
+            this.toHomePage(newUser); // Redirect to home page on success
         }
     }
     
+    /**
+     * Redirects to the home page after successful login or signup.
+     * 
+     * @param user The authenticated user object.
+     */
     private void toHomePage(User user) {
-        // Close the current frame
-        frame.dispose();
-        
-        HomePageGUI homePage = new HomePageGUI(user);
+        frame.dispose(); // Close the current frame
+        HomePageGUI homePage = new HomePageGUI(user); // Open the home page
     }
 }

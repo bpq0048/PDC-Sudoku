@@ -126,11 +126,15 @@ public class Timer {
      * @return The elapsed time in milliseconds.
      */
     public long getMillis() {
+        long totalElapsed = 0;
+
         if (running) {
-            return System.currentTimeMillis() - startTime - pausedTime + elapsedTime;
-        } else {
-            return endTime - startTime - pausedTime + elapsedTime;
+            totalElapsed = System.currentTimeMillis() - startTime;
+        } else if (endTime > startTime) {
+            totalElapsed = endTime - startTime;
         }
+
+        return totalElapsed - pausedTime + elapsedTime;
     }
 
     /**

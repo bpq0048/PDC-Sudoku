@@ -23,7 +23,7 @@ public class PuzzleGenerator {
     private final int difficulty;        // The difficulty level for the puzzle board
     
     // Number of cells to be removed when generating puzzle boards for each difficulty
-    private static final int BEGINNER = 2;
+    private static final int BEGINNER = 28;
     private static final int EASY = 45;
     private static final int MEDIUM = 49;
     private static final int HARD = 53;

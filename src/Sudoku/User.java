@@ -15,6 +15,7 @@ package Sudoku;
  */
 public class User {
     
+    private long userId;                    // The user ID from the database
     private final String username;          // The username of the user
     private final String password;          // The password of the user
     private long[] bestTimes = new long[5]; // The best completion time of the user in milliseconds
@@ -38,14 +39,25 @@ public class User {
     /**
      * Constructor to initialize a User object with a username, password, and best times.
      * 
+     * @param userId The user ID from the database.
      * @param username The username of the user.
      * @param password The password of the user.
      * @param bestTimes The best times of the user for each difficulty.
      */
-    public User(String username, String password, long[] bestTimes) {
+    public User(long userId, String username, String password, long[] bestTimes) {
+        this.userId = userId;
         this.username = username;
         this.password = password;
         this.bestTimes = bestTimes;
+    }
+
+    /**
+     * Retrieves the users ID.
+     * 
+     * @return The user ID from the database
+     */
+    public long getUserId() {
+        return userId;
     }
 
     /**
@@ -111,48 +123,17 @@ public class User {
     }
     
     /**
-     * Prints all of the best times.
+     * Gets all of the best times as strings.
      * 
      * If a best time is 0 (unrecorded), "N/A" is printed instead.
      */
-    public void printAllTimes() {
-        System.out.println("  Beginner: " + ((bestTimes[0] == 0) ? "N/A" : printBestTime(0)));
-        System.out.println("  Easy: " + ((bestTimes[1] == 0) ? "N/A" : printBestTime(1)));
-        System.out.println("  Medium: " + ((bestTimes[2] == 0) ? "N/A" : printBestTime(2)));
-        System.out.println("  Hard: " + ((bestTimes[3] == 0) ? "N/A" : printBestTime(3)));
-        System.out.println("  Expert: " + ((bestTimes[4] == 0) ? "N/A" : printBestTime(4)));
-    }
-    
-    /**
-     * Creates a User object from a string representation.
-     * 
-     * @param data A string containing the username, password and best time.
-     * @return A User object with the parsed username, password and best time.
-     */
-    public static User fromString(String data) {
-        String[] parts = data.split(" ");
-        String username = parts[0];
-        String password = parts[1];
-        
-        long bestTimes[] = new long[5];
-        for (int i = 0; i < 5; i++) {
-            bestTimes[i] = Long.parseLong(parts[(i+2)]);
-        }
-        
-        return new User(username, password, bestTimes);
-    }
-    
-    /**
-     * Converts the User object to a String.
-     * 
-     * @return A String representation of the User object.
-     */
-    @Override
-    public String toString() {
-        String str = username + " " + password;
-        for (int i = 0; i < 5; i++) {
-            str += " " + bestTimes[i];
-        }
-        return str;
+    public String[] getBestTimesAsString() {
+        String[] times = new String[5];
+        times[0] = (bestTimes[0] == 0) ? "N/A" : printBestTime(0);
+        times[1] = (bestTimes[1] == 0) ? "N/A" : printBestTime(1);
+        times[2] = (bestTimes[2] == 0) ? "N/A" : printBestTime(2);
+        times[3] = (bestTimes[3] == 0) ? "N/A" : printBestTime(3);
+        times[4] = (bestTimes[4] == 0) ? "N/A" : printBestTime(4);
+        return times;
     }
 }

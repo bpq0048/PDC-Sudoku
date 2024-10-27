@@ -5,44 +5,47 @@
 package SudokuGUI;
 
 import Sudoku.Board;
-import Sudoku.FileHandler;
 import Sudoku.Game;
 import Sudoku.User;
-import Sudoku.Timer;
-import Sudoku.HintSystem;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.HashMap;
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
 
-/**
- * GameGUI class visualizing a game of Sudoku.
- * 
- * @author paige
- */
 public class GameGUI extends JPanel {
     
-    private JPanel gridPanel;
     private final Game game;
     private CardLayout cardLayout;
-    private FileHandler fileHandler;     // Handler for reading and writing user data to files
-    private HashMap<String, User> users; // Map of users for storing and accessing user data
     private JFrame frame;
     
     private LivesGUI livesGUI;
     private HintGUI hintGUI;
     
+    private JButton hintButton;
+    
+    private JLabel timerLabel; // Timer label
+    private JTextField[][] cells = new JTextField[9][9]; // Cell text fields
+
+    private PausePanelGUI pausePanel;
+    
+    private TimerGUI timerGUI;
+    
+    private boolean isPaused = false;
+    
+    private int currentRow = -1; // -1 indicates no cell is currently selected
+    private int currentCol = -1;
+
     /**
      * Constructor for initializing the GUI for a game of Sudoku.
      * 
+     * @param frame
+     * @param cardLayout
      * @param user The user who is playing
      * @param difficulty The difficulty of the game
      */
@@ -50,145 +53,200 @@ public class GameGUI extends JPanel {
         this.cardLayout = cardLayout;
         this.game = new Game(user, difficulty);
         this.frame = frame;
-        
-        this.hintGUI = new HintGUI(game.getHint(), game);
-        
-        // Ensure this code runs in the constructor or initialization block of GameGUI
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                // Show confirmation dialog to save the game before quitting
-                int response = JOptionPane.showConfirmDialog(frame,
-                        "Do you want to save the game before quitting?", "Confirm Exit",
-                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 
-                if (response == JOptionPane.YES_OPTION) {
-                    game.exitGame(true);
-                }
-                frame.dispose(); // Finally, close the window
-            }
-        });
-        
         initialize(); 
     }
-    
+
     public GameGUI(JFrame frame, CardLayout cardLayout, User user) {
         this.cardLayout = cardLayout;
         this.game = new Game(user);
         this.frame = frame;
-        
-        this.hintGUI = new HintGUI(game.getHint(), game);
+
+        initialize();
+    }
+
+    /**
+     * Initializes the GUI.
+     */
+    private void initialize() {
 
         // Ensure this code runs in the constructor or initialization block of GameGUI
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                // Show confirmation dialog to save the game before quitting
-                int response = JOptionPane.showConfirmDialog(frame,
-                        "Do you want to save the game before quitting?", "Confirm Exit",
-                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-
-                if (response == JOptionPane.YES_OPTION) {
-                    game.exitGame(true);
-                }
+                game.exitGame(true);
                 frame.dispose(); // Finally, close the window
             }
         });
-
-        initialize();
-    }
-    
-    /**
-     * Initializes the GUI.
-     */
-    private void initialize() {
+        
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
+        JPanel titlePanel = initializeTitlePanel();
+        JPanel bottomPanel = initializeBottomPanel();
+        
+        
+
+        // Add the Sudoku grid panel
+        JPanel gridPanel = createSudokuGrid();
+        
+        // Add components to the main panel
+        add(titlePanel, BorderLayout.NORTH);
+        add(gridPanel, BorderLayout.CENTER);
+        add(bottomPanel, BorderLayout.SOUTH);
+        
+        pausePanel = new PausePanelGUI(this::resumeGame);
+    }
+    
+    private JPanel initializeTitlePanel() {
+        
+
+        createHintButton();
+        
+        // Create and set up the Quit Game button
+        JButton quitButton = new JButton("Quit Game");
+        quitButton.setBackground(Color.LIGHT_GRAY);
+        quitButton.setForeground(Color.BLACK);
+        quitButton.addActionListener(e -> quitGame());
+        
+        // Create and set up the Pause Game button
+        JButton pauseButton = new JButton("Pause");
+        pauseButton.setBackground(Color.LIGHT_GRAY);
+        pauseButton.setForeground(Color.BLACK);
+        pauseButton.addActionListener(e -> {
+            if (isPaused) {
+                resumeGame(); // Custom method to handle resuming
+                pauseButton.setText("Pause"); // Change button text to "Pause"
+            } else {
+                pauseGame(); // Existing method to handle pausing
+                pauseButton.setText("Resume"); // Change button text to "Resume"
+            }
+            isPaused = !isPaused; // Toggle the pause state
+        });
+        
         // Title Panel
-        JPanel titlePanel = new JPanel();
-        JLabel titleLabel = new JLabel("PLAY SUDOKU.");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 30));
-        titlePanel.add(titleLabel);
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        
+        titlePanel.add(quitButton, BorderLayout.WEST);
+        titlePanel.add(pauseButton, BorderLayout.EAST);
+        titlePanel.add(hintButton, BorderLayout.CENTER);
+        
         titlePanel.setBackground(Color.WHITE);
+        titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        return titlePanel;
+    }
+    
+    private void createHintButton() {
+        hintButton = new JButton("USE HINT");
+        hintButton.setBackground(Color.LIGHT_GRAY);
+        hintButton.setForeground(Color.BLACK);
+        hintButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                provideHint();
+            }
+        });
+    }
+    
+    private void provideHint() {
+        int hintValue = game.useHint(currentRow, currentCol); // Assuming this method takes row and col as parameters
+        if (hintValue != -1) { // Assuming -1 indicates no hint available
+            cells[currentRow][currentCol].setText(String.valueOf(hintValue));
+            // Optionally, you can show a dialog or update hintGUI with the hint
+            hintGUI.updateHints(); // Update your hint GUI
+            
+            // Check if there are no hints left and hide the button
+            if (game.getHintCount() == 0) {
+                hintButton.setVisible(false); // Hide the hint button
+            }
+            
+        } else {
+            JOptionPane.showMessageDialog(this, "No hint available for the selected cell.");
+        }
+    }
+    
+    private JPanel initializeBottomPanel() {
+        
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+
+        this.timerGUI = new TimerGUI(game.getTimer());
+        timerGUI.start();
+        
+        // Set up the timer label
+        timerLabel = timerGUI.getTimeLabel();
+        timerLabel.setFont(new Font("Arial", Font.PLAIN, 20));
+        timerLabel.setHorizontalAlignment(SwingConstants.CENTER);
         
         // Lives Panel
         this.livesGUI = new LivesGUI(game);
-
-        // Grid and number panels
-        gridPanel = this.sudokuGrid();
-
-
-        // Add components to the pain panel
-        add(titlePanel, BorderLayout.NORTH);
-        add(livesGUI, BorderLayout.SOUTH);
-        add(gridPanel, BorderLayout.CENTER);
-    }
-    
-    /**
-     * Creates the game grid GUI with editable and static cells. 
-     * 
-     * @return 
-     */
-    private JPanel sudokuGrid() {
-        JPanel gridPanel = new JPanel(new GridLayout(9, 9));
-        gridPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        gridPanel.setBackground(Color.WHITE);
         
-        Board board = game.getBoard();
-        Board completeBoard = game.getCompleteBoard();
+        this.hintGUI = new HintGUI(game);
+        
+        bottomPanel.add(livesGUI, BorderLayout.WEST);
+        bottomPanel.add(hintGUI, BorderLayout.EAST);
+        bottomPanel.add(timerLabel, BorderLayout.CENTER);
+        
+        bottomPanel.setBackground(Color.WHITE);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        return bottomPanel;
+    }
 
-        // Populate grid with cells based on the board state
+    private JPanel createSudokuGrid() {
+        JPanel gridPanel = new JPanel(new GridLayout(9, 9));
+        gridPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Padding around the grid
+        gridPanel.setBackground(Color.WHITE);
+
+        // Add text fields for each cell in the Sudoku grid
         for (int row = 0; row < 9; row++) {
             for (int col = 0; col < 9; col++) {
-                if (board.getCell(row, col).getValue() == 0) {
-                    JTextField cell = createEditableCell(row, col, completeBoard);
+                if (game.getBoard().getCell(row, col).getValue() == 0) {
+                    JTextField cell = new JTextField(1);
+                    cell.setHorizontalAlignment(JTextField.CENTER);
+                    applyCellStyling(cell, row, col);
                     gridPanel.add(cell);
+                    cells[row][col] = cell; // Store the reference to the cell
+
+                    // Action Listener to detect user input
+                    int finalRow = row; // Required to use row inside lambda
+                    int finalCol = col; // Required to use col inside lambda
+                    
+                     cell.addMouseListener(new MouseAdapter() {
+                        @Override
+                        public void mouseClicked(MouseEvent e) {
+                            currentRow = finalRow; // Set the current row when the cell is clicked
+                            currentCol = finalCol; // Set the current column when the cell is clicked
+                        }
+                    });
+                    
+                    cell.getDocument().addDocumentListener((DocumentListener) new javax.swing.event.DocumentListener() {
+                        @Override
+                        public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                            checkInput(cell, finalRow, finalCol, game.getCompleteBoard());
+                        }
+
+                        @Override
+                        public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                            checkInput(cell, finalRow, finalCol, game.getCompleteBoard());
+                        }
+
+                        @Override
+                        public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                            checkInput(cell, finalRow, finalCol, game.getCompleteBoard());
+                        }
+                    });
                 } else {
-                    JLabel cellLabel = createStaticCell(board.getCell(row, col).getValue());
+                    JLabel cellLabel = new JLabel(String.valueOf(game.getBoard().getCell(row, col).getValue()));
+                    cellLabel.setHorizontalAlignment(JLabel.CENTER);
+                    applyCellStyling(cellLabel, row, col);
                     gridPanel.add(cellLabel);
                 }
             }
         }
-        
+
         return gridPanel;
-    }
-    
-    private JTextField createEditableCell(int row, int col, Board completeBoard) {
-        JTextField cell = new JTextField(1);
-        cell.setHorizontalAlignment(JTextField.CENTER);
-        applyCellStyling(cell, row, col);
-
-        // Apply single-digit filter to limit input and replace existing input if a new digit is typed
-        ((AbstractDocument) cell.getDocument()).setDocumentFilter(new SingleDigitFilter());
-
-        // Add document listener to check the input and update the cell if correct
-        cell.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                checkInput(cell, row, col, completeBoard);
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                checkInput(cell, row, col, completeBoard);
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                checkInput(cell, row, col, completeBoard);
-            }
-        });
-        return cell;
-    }
-    
-    private JLabel createStaticCell(int value) {
-        JLabel cellLabel = new JLabel(String.valueOf(value));
-        cellLabel.setHorizontalAlignment(JLabel.CENTER);
-        applyCellStyling(cellLabel, 0, 0);
-        return cellLabel;
     }
 
     // Method to check the input and update the cell if correct
@@ -198,55 +256,86 @@ public class GameGUI extends JPanel {
             try {
                 int value = Integer.parseInt(text);
                 if (value == completeBoard.getCell(row, col).getValue()) {
+                    // If the input is correct, make the cell non-editable
                     cell.setEditable(false);
-                    cell.setForeground(Color.BLUE);
-                    game.getBoard().updateCell(row, col, value);
-                    this.checkGameCompletion();
+                    cell.setForeground(Color.BLUE); // Optional: Change text color to indicate correctness
+                    cell.setBackground(Color.WHITE);
                 } else {
-                    cell.setForeground(Color.RED);
-                    this.checkLives();
+                    cell.setForeground(Color.RED); // Optional: Indicate incorrect input
+                    cell.setBackground(Color.PINK);
+                    
+                    checkLives();
                 }
             } catch (NumberFormatException ex) {
-                cell.setForeground(Color.RED);
+                // Handle non-numeric input
+                cell.setForeground(Color.RED); // Optional: Indicate incorrect input
             }
+        }
+    }
+    
+    private void checkLives() {
+        game.setLives(game.getLives() - 1);
+        livesGUI.updateLives();
+        
+        if (game.getLives() == 0) {
+            
+            // Navigate back to the home page
+            cardLayout.show(this.getParent(), "homePage");
         }
     }
 
     private void applyCellStyling(JComponent cell, int row, int col) {
-        Font font = new Font("Arial", Font.BOLD, 22);
+        // Set font size and style
+        Font font = new Font("Arial", Font.BOLD, 22); // Adjust font name, style, and size as needed
         cell.setFont(font);
-
+        // Create borders for the cells
         int top = 1, left = 1, bottom = 1, right = 1;
-
+        // Thicker border for 3x3 grid boundaries
         if (row % 3 == 0) top = 3;
         if (col % 3 == 0) left = 3;
-        if (row == 8) bottom = 3;
-        if (col == 8) right = 3;
-
+        if (row == 8) bottom = 3; // Bottom border for the last row
+        if (col == 8) right = 3;  // Right border for the last column
         cell.setBorder(BorderFactory.createMatteBorder(top, left, bottom, right, Color.BLACK));
     }
 
-    // Call updateLivesPanel in checkLives() after updating the lives
-    private void checkLives() {
-        game.setLives(game.getLives() - 1);
-        livesGUI.updateLives(); // Update the lives panel
-
-        if (game.getLives() == 0) {
-            game.endGame();
-
-            JOptionPane.showMessageDialog(this, 
-                "Uh oh! You lost", 
-                "Game Complete", 
-                JOptionPane.INFORMATION_MESSAGE);
-
-            cardLayout.show(this.getParent(), "homePage");
+    private void pauseGame() {
+        game.getTimer().pause(); // Pause the timer
+        // Hide the grid panel instead of removing it
+        for (Component comp : getComponents()) {
+            if (comp instanceof JPanel && ((JPanel) comp).getLayout() instanceof GridLayout) {
+                comp.setVisible(false); // Hide the grid panel
+            }
         }
-}
-    
+        add(pausePanel, BorderLayout.CENTER); // Add the pause panel
+        revalidate(); // Refresh the layout
+        repaint(); // Repaint the panel
+    }
+
+    private void resumeGame() {
+        game.getTimer().resume(); // Resume the timer
+        // Show the grid panel again instead of recreating it
+        for (Component comp : getComponents()) {
+            if (comp instanceof JPanel && ((JPanel) comp).getLayout() instanceof GridLayout) {
+                comp.setVisible(true); // Show the grid panel
+            }
+        }
+        remove(pausePanel); // Remove the pause panel
+        revalidate(); // Refresh the layout
+        repaint(); // Repaint the panel
+    }
+
+    private void quitGame() {
+        // Save the current game state
+        game.exitGame(true); // Assuming this saves the game
+
+        // Navigate back to the home page
+        cardLayout.show(this.getParent(), "homePage");
+    }
+
     /**
      * Checks if the board is complete and ends the game with a message if so.
      */
-    private void checkGameCompletion() {
+    public void checkGameCompletion() {
         if (game.getBoard().isComplete()) {
             game.endGame();
             
@@ -256,19 +345,6 @@ public class GameGUI extends JPanel {
                 JOptionPane.INFORMATION_MESSAGE);
             
             cardLayout.show(this.getParent(), "homePage");
-        }
-    }
-
-    // DocumentFilter to restrict cell input to a single digit
-    class SingleDigitFilter extends DocumentFilter {
-        @Override
-        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-            if (text.matches("\\d") && fb.getDocument().getLength() == 1) {
-                fb.remove(0, 1); // Replace existing digit if present
-            }
-            if (text.matches("\\d") && fb.getDocument().getLength() == 0) {
-                fb.insertString(0, text, attrs); // Allow single digit only
-            }
         }
     }
 }
