@@ -34,14 +34,9 @@ public class LivesGUI extends JPanel {
      * Initializes the Lives panel.
      */
     private void initialize() {
-        // Load heart icon image
-        ImageIcon heartIcon = new ImageIcon("path/to/heart_icon.png"); // Replace with your icon path
-        JLabel heartLabel = new JLabel(heartIcon);
-        
         livesLabel = new JLabel("Lives: " + game.getLives());
         livesLabel.setFont(new Font("Arial", Font.PLAIN, 20));
 
-        add(heartLabel);
         add(livesLabel);
     }
 

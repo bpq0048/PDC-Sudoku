@@ -33,14 +33,9 @@ public class HintGUI extends JPanel {
      * Initializes the Hint panel.
      */
     private void initialize() {
-        // Load heart icon image
-        ImageIcon heartIcon = new ImageIcon("path/to/heart_icon.png"); // Replace with your icon path
-        JLabel heartLabel = new JLabel(heartIcon);
-        
         hintsLabel = new JLabel("Hints: " + game.getHintCount());
         hintsLabel.setFont(new Font("Arial", Font.PLAIN, 20));
 
-        add(heartLabel);
         add(hintsLabel);
     }
 
