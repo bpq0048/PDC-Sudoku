@@ -12,19 +12,20 @@ import java.util.logging.Logger;
 /**
  * Manages all database interactions for the Sudoku game.
  * 
- * This class handles user accounts, information and game progress.
+ * This class handles user accounts, information, and game progress.
  * 
  * @author paige
  */
-public final class DBHandler {
-    
+public class DBHandler {
+
     // Database connection details
     private static final String URL = "jdbc:derby://localhost:1527/Sudoku;create=true";
     private static final String USERNAME = "pdc";   // Database username 
     private static final String PASSWORD = "pdc";   // Database password
     
-    Connection conn;    // Database connection object
-    
+    private Connection conn;    // Database connection object
+    private boolean dbSetUp;    // To track if the DB has been set up
+
     /**
      * Constructor to initialize the DBHandler and set up the database.
      */
@@ -62,16 +63,27 @@ public final class DBHandler {
                     "elapsed_time INT, " +
                     "lives INT, " +
                     "hints INT, " +
+                    "board VARCHAR(255), " +
                     "puzzle_board VARCHAR(255), " +
-                    "complete_board VARCHAR(255), " +
+                    "completed_board VARCHAR(255), " +
                     "FOREIGN KEY (user_id) REFERENCES USERS(user_id))");
             }
             
+            this.dbSetUp = true;
             statement.close();
 
         } catch (Throwable e) {
             Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Database setup error", e);
         }
+    }
+    
+    /**
+     * Return the status of if the database is set up.
+     * 
+     * @return true if database is set up; false otherwise
+     */
+    public boolean isDBSetUp() {
+        return dbSetUp; // Return the setup status
     }
 
     /**
@@ -96,7 +108,7 @@ public final class DBHandler {
      * 
      * @param username The username of the new user.
      * @param password The password of the new user.
-     * @return true if the user was added successfully, false otherwise/
+     * @return true if the user was added successfully, false otherwise.
      */
     public boolean addUser(String username, String password) {
         String sql = "INSERT INTO USERS (username, password) VALUES (?, ?)";
@@ -130,7 +142,7 @@ public final class DBHandler {
             
                 // Retrieve best times for each difficulty
                 long[] bestTimes = new long[5];
-                bestTimes[0] = rs.getLong("best_time_beginner"); // Assuming your column names are these
+                bestTimes[0] = rs.getLong("best_time_beginner"); 
                 bestTimes[1] = rs.getLong("best_time_easy");
                 bestTimes[2] = rs.getLong("best_time_medium");
                 bestTimes[3] = rs.getLong("best_time_hard");
@@ -190,25 +202,24 @@ public final class DBHandler {
        }
    }
 
-     /**
-     * Saves game progress for a specific user.
-     * 
-     * If a saved game already exists, it will be deleted before saving the new game.
+    /**
+     * Saves game progress for a specific user. If a saved game already exists, it will be deleted before saving the new game.
      * 
      * @param userId The ID of the user.
      * @param difficulty The difficulty level of the game.
      * @param elapsedTime The time taken to play the game.
      * @param lives The number of lives remaining.
      * @param hints The number of hints used.
-     * @param puzzleBoard The current state of the puzzle board.
+     * @param board The current state of the puzzle board.
+     * @param puzzleBoard The original puzzle board.
      * @param completeBoard The completed state of the board.
      * @return true if the game was saved successfully, false otherwise.
      */
-    public boolean saveGame(long userId, int difficulty, long elapsedTime, int lives, int hints, String puzzleBoard, String completeBoard) {
+    public boolean saveGame(long userId, int difficulty, long elapsedTime, int lives, int hints, String board, String puzzleBoard, String completeBoard) {
         // SQL to delete any existing saved game for the user
         String deleteSql = "DELETE FROM SAVEDGAMES WHERE user_id = ?";
         // SQL to insert a new saved game
-        String insertSql = "INSERT INTO SAVEDGAMES (user_id, difficulty, elapsed_time, lives, hints, puzzle_board, completed_board) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String insertSql = "INSERT INTO SAVEDGAMES (user_id, difficulty, elapsed_time, lives, hints, board, puzzle_board, completed_board) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try {
             // Start a transaction
@@ -227,8 +238,9 @@ public final class DBHandler {
                 insertPs.setLong(3, elapsedTime);
                 insertPs.setInt(4, lives);
                 insertPs.setInt(5, hints);
-                insertPs.setString(6, puzzleBoard);
-                insertPs.setString(7, completeBoard);
+                insertPs.setString(6, board);
+                insertPs.setString(7, puzzleBoard);
+                insertPs.setString(8, completeBoard);
                 insertPs.executeUpdate();
             }
 
@@ -245,11 +257,11 @@ public final class DBHandler {
             Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error saving game", e);
             return false;
         } finally {
+            // Restore auto-commit mode
             try {
-                // Restore the default commit behavior
                 conn.setAutoCommit(true);
             } catch (SQLException e) {
-                Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Failed to reset auto-commit", e);
+                Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error restoring auto-commit mode", e);
             }
         }
     }
@@ -274,12 +286,12 @@ public final class DBHandler {
         }
         return false;
     }
-
+    
     /**
-     * Retrieves the saved game data for the specified user.
+     * Retrieves a saved game for a specific user.
      * 
-     * @param userId The ID of the user whose saved game to retrieve.
-     * @return a HashMap containing game details, or null if no saved game exists.
+     * @param userId The ID of the user.
+     * @return a HashMap containing the saved game details, or null if no game found.
      */
     public HashMap<String, String> getSavedGame(long userId) {
         String sql = "SELECT * FROM SAVEDGAMES WHERE user_id = ?";
@@ -289,50 +301,51 @@ public final class DBHandler {
             ps.setLong(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    // Assuming these columns exist in your SAVEDGAMES table
-                savedGameData.put("difficulty", String.valueOf(rs.getInt("difficulty")));
-                savedGameData.put("lives", String.valueOf(rs.getInt("lives")));
-                
-                // Check for null values before converting to string
-                long elapsedTime = rs.getLong("elapsed_time");
-                savedGameData.put("elapsedTime", rs.wasNull() ? "0" : String.valueOf(elapsedTime));
-                
-                savedGameData.put("hints", String.valueOf(rs.getInt("hints")));
-                savedGameData.put("puzzleBoard", rs.getString("puzzle_board") != null ? rs.getString("puzzle_board") : "");
-                savedGameData.put("completedBoard", rs.getString("completed_board") != null ? rs.getString("completed_board") : "");
+                    savedGameData.put("difficulty", rs.getString("difficulty")); // Assumed VARCHAR
+                    savedGameData.put("lives", String.valueOf(rs.getInt("lives")));
+
+                    long elapsedTime = rs.getLong("elapsed_time");
+                    savedGameData.put("elapsedTime", rs.wasNull() ? "0" : String.valueOf(elapsedTime));
+
+                    savedGameData.put("hints", String.valueOf(rs.getInt("hints")));
+                    savedGameData.put("board", rs.getString("board") != null ? rs.getString("board") : "");
+                    savedGameData.put("puzzleBoard", rs.getString("puzzle_board") != null ? rs.getString("puzzle_board") : "");
+                    savedGameData.put("completedBoard", rs.getString("completed_board") != null ? rs.getString("completed_board") : "");
                 }
             }
         } catch (SQLException e) {
             Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error loading saved game", e);
         }
-        
+
         return savedGameData;
     }
     
+    /**
+     * Removes a saved game for a specific user.
+     * 
+     * @param userId The ID of the user.
+     */
     public void removeSavedBoard(long userId) {
         String sql = "DELETE FROM SAVEDGAMES WHERE user_id = ?";
-
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, userId);
-            int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Saved board removed successfully for user ID: " + userId);
-            } else {
-                System.out.println("No saved board found for user ID: " + userId);
-            }
+            ps.executeUpdate();
+            
         } catch (SQLException e) {
-            Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error removing saved board", e);
+            Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error removing saved board for user ID: " + userId, e);
         }
     }
 
-    // Closes the database connection
+    /**
+     * Closes the database connection when it is no longer needed.
+     */
     public void closeConnection() {
         try {
             if (conn != null && !conn.isClosed()) {
                 conn.close();
             }
         } catch (SQLException e) {
-            Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error closing the database connection", e);
+            Logger.getLogger(DBHandler.class.getName()).log(Level.SEVERE, "Error closing database connection", e);
         }
     }
 }

@@ -27,6 +27,20 @@ public class Board {
     }
     
     /**
+     * Creates a copy of a preexisting board.
+     * 
+     * @param board The board to be copied.
+     */
+    public Board(Board board) {
+        this.grid = new Cell[9][9];
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                this.grid[i][j] = new Cell(board.grid[i][j].getValue(), board.grid[i][j].isEditable()); 
+            }
+        }
+    }
+    
+    /**
      * Initializes the board with empty cells.
      * 
      * Each cell is initialized with a value of 0 and marked as editable.

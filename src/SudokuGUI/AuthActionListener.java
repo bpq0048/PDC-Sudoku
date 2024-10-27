@@ -116,12 +116,12 @@ class AuthActionListener implements ActionListener {
             dbHandler.addUser(username, password);
             
             messageLabel.setText("Sign-up successful! Redirecting...");
-            this.toHomePage(newUser); // Redirect to home page on success
+            this.toHomePage(dbHandler.getUser(username)); // Redirect to home page on success
         }
     }
     
     /**
-     * Redirects to the home page after successful login or signup.
+     * Redirects to the home page after successful login or sign-up.
      * 
      * @param user The authenticated user object.
      */

@@ -6,7 +6,6 @@ package SudokuGUI;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.HashMap;
 
 /**
  * Handles difficulty drop-down selector. 
@@ -18,9 +17,8 @@ import java.util.HashMap;
  */
 public class DifficultyGUI extends JPanel {
     
-    private JComboBox<String> difficultyDropdown;       // JComboBox for selecting difficulty levels
-    private HashMap<String, Integer> difficultyLevels;  // A HashMap that associates difficulty names with their corresponding integer values
-
+    private final JComboBox<String> difficultyDropdown;       // JComboBox for selecting difficulty levels
+    
     /**
      * Constructor to set up the DifficultyGUI panel.
      * 
@@ -33,25 +31,15 @@ public class DifficultyGUI extends JPanel {
         // Set the background color of the panel to white
         setBackground(Color.WHITE);
 
-        // Initialize the HashMap for difficulty levels
-        difficultyLevels = new HashMap<>();
-        
-        // Populate the HashMap with difficulty names and their respective values
-        difficultyLevels.put("Beginner", 1);
-        difficultyLevels.put("Easy", 2);
-        difficultyLevels.put("Medium", 3);
-        difficultyLevels.put("Hard", 4);
-        difficultyLevels.put("Expert", 5);
-
         // Create a JLabel for the difficulty selection prompt with styling
-        JLabel difficultyLabel = new JLabel("Select Difficulty");
+        JLabel difficultyLabel = new JLabel("DIFFICULTY SELECTOR");
         difficultyLabel.setFont(new Font("Arial", Font.PLAIN, 20));
         
         // Add the label to the panel
         add(difficultyLabel);
 
-        // Create an array from the difficulty level keys to populate the JComboBox
-        String[] difficulties = difficultyLevels.keySet().toArray(new String[0]);
+        // Define an ordered array of difficulty names
+        String[] difficulties = {"Beginner", "Easy", "Medium", "Hard", "Expert"};
         
         // Initialize the JComboBox with the difficulty options abd styling
         difficultyDropdown = new JComboBox<>(difficulties);
@@ -68,6 +56,13 @@ public class DifficultyGUI extends JPanel {
      */
     public int getSelectedDifficultyValue() {
         String selectedDifficulty = (String) difficultyDropdown.getSelectedItem();  // Get the selected item from the JComboBox
-        return difficultyLevels.getOrDefault(selectedDifficulty, -1);
+        switch (selectedDifficulty) {
+            case "Beginner": return 1;
+            case "Easy": return 2;
+            case "Medium": return 3;
+            case "Hard": return 4;
+            case "Expert": return 5;
+            default: return -1; // Invalid selection
+        }
     }
 }

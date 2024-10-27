@@ -10,7 +10,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- *
+ * Represents the lives GUI for GameGUI.
+ * 
  * @author paige
  */
 public class LivesGUI extends JPanel {

@@ -72,7 +72,7 @@ public class TimerGUI {
     public void start() {
         gameTimer.start();
     }
-
+    
     /**
      * Stops the Swing Timer for updating the time display.
      */

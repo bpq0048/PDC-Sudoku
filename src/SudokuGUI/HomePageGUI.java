@@ -4,69 +4,94 @@
  */
 package SudokuGUI;
 
-import Sudoku.Board;
-import Sudoku.CompleteBoard;
 import Sudoku.DBHandler;
-import Sudoku.Game;
 import Sudoku.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.util.HashMap;
 
+/**
+ * Represents the home page of the Sudoku game.
+ * 
+ * It allows users to start a new game, continue a saved game, and log out.
+ * 
+ * @author paige
+ */
 public class HomePageGUI extends JPanel {
 
-    private User user;
-    private DifficultyGUI difficultyGUI;
-    private JButton newGameButton;
-    private JButton continueGameButton;
-    private JButton logoutButton;
-    private CardLayout cardLayout;
-    private JPanel cardPanel;
-    private JFrame frame;
-    private DBHandler dbHandler;
     
+    private User user;                      // User object representing the currently logged-in user
+    private DBHandler dbHandler;            // DBHandler instance for interacting with the database
+    private CardLayout cardLayout;          // CardLayout manager for switching between different panels
+    private JPanel cardPanel;               // JPanel that holds all the cards (pages) in the layout
+    private JButton newGameButton;          // Button to start a new game
+    private JButton continueGameButton;     // Button to continue a previously saved game
+    private JFrame frame;                   // Main frame of the GUI
+    private JPanel bestTimesPanel;          // JPanel to displya best times
 
+    /**
+     * Constructs a HomePageGUI instance.
+     *
+     * @param user The user whose information will be displayed on the home page.
+     */
     public HomePageGUI(User user) {
         this.user = user;
         this.dbHandler = new DBHandler();
-        initializeFrame();
+        
+        setupFrame();  // Set up the main frame for the GUI
+        cardPanel.add(this, "homePage");  // Add this panel to the card layout
+        initializeHomePage();  // Initialize components of the home page
+        updateContinueGameButtonVisibility();
     }
 
-    private void initializeFrame() {
-        this.frame = new JFrame("PLAY SUDOKU.");
-        cardPanel = new JPanel();
+    /**
+     * Sets up the main frame for the GUI.
+     */
+    private void setupFrame() {
+        // Create and configure the main frame
+        frame = new JFrame("PLAY SUDOKU.");
         cardLayout = new CardLayout();
-        cardPanel.setLayout(cardLayout);
-        cardPanel.add(this, "homePage");
+        cardPanel = new JPanel();
 
-        initializeHomePageComponents();
-
-        frame.add(cardPanel);
-        frame.pack();
-        frame.setSize(600, 700);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-
-        cardLayout.show(cardPanel, "homePage");
+        cardPanel.setLayout(cardLayout);  // Set the layout manager for card panel
+        frame.add(cardPanel);  // Add card panel to the frame
+        frame.pack();  // Pack the frame to preferred sizes
+        frame.setSize(600, 700);  // Set initial size of the frame
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  // Exit on close
+        frame.setLocationRelativeTo(null);  // Center the frame on the screen
+        frame.setVisible(true);  // Make the frame visible
     }
 
-    private void initializeHomePageComponents() {
+    /**
+     * Initializes the components of the home page.
+     */
+    private void initializeHomePage() {
+        // Set the layout and background for the home page
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
+        // Home Label
         JLabel homeLabel = createHomeLabel();
         add(homeLabel, BorderLayout.NORTH);
 
-        difficultyGUI = new DifficultyGUI();
-        add(difficultyGUI, BorderLayout.CENTER);
+        // Best Times Panel
+        createBestTimesPanel();
+        add(bestTimesPanel, BorderLayout.CENTER);
 
-        createButtons();
-        add(createBestTimesPanel(), BorderLayout.CENTER); // Center the best times panel
+        // Buttons
+        JPanel buttonPanel = createButtonPanel();
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        // Update the "Continue Game" button's visibility
+        updateContinueGameButtonVisibility();
     }
 
+    /**
+     * Creates the home label with styling.
+     *
+     * @return The JLabel representing the home label.
+     */
     private JLabel createHomeLabel() {
         JLabel homeLabel = new JLabel("PLAY SUDOKU.", JLabel.CENTER);
         homeLabel.setFont(new Font("Arial", Font.BOLD, 30));
@@ -74,56 +99,80 @@ public class HomePageGUI extends JPanel {
         return homeLabel;
     }
 
-    private void createButtons() {
-        logoutButton = createButton("Log Out", "logout", frame); // Create the logout button
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT)); // Align buttons to the left
-        buttonPanel.setBackground(Color.WHITE); // Set background for the button panel
-        buttonPanel.add(logoutButton); // Add logout button to the panel
-        
-        // Create the new game and continue game buttons
-        newGameButton = createButton("New Game", "newGame", frame);
-        continueGameButton = createButton("Continue Game", "continueGame", frame);
-        
-        // Add the buttons to the button panel
+    /**
+     * Creates a panel for buttons at the bottom of the home page.
+     *
+     * @return The JPanel containing the buttons.
+     */
+    private JPanel createButtonPanel() {
+        // Create a panel for buttons at the bottom of the home page
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        buttonPanel.setBackground(Color.WHITE);
+
+        // Logout Button
+        JButton logoutButton = createButton("Log Out", "logout");
+        buttonPanel.add(logoutButton);
+
+        // New Game and Continue Game Buttons
+        newGameButton = createButton("New Game", "newGame");
+        continueGameButton = createButton("Continue Game", "continueGame");
+
         buttonPanel.add(newGameButton);
         buttonPanel.add(continueGameButton);
-        add(buttonPanel, BorderLayout.SOUTH);
 
-        newGameButton.addActionListener(e -> startNewGame());
-        continueGameButton.addActionListener(e -> loadGame());
-
-        updateContinueGameButtonVisibility();
+        return buttonPanel;
     }
 
-    private JButton createButton(String text, String action, JFrame frame) {
+    /**
+     * Creates a button with the specified text and action.
+     *
+     * @param text  The text displayed on the button.
+     * @param action The action identifier for the button.
+     * @return The JButton created.
+     */
+    private JButton createButton(String text, String action) {
+        // Create a button with the specified text and action
         JButton button = new JButton(text);
         button.setBackground(Color.LIGHT_GRAY);
         button.setForeground(Color.BLACK);
         button.addActionListener(e -> {
-            if ("newGame".equals(action)) {
-                startNewGame();
-            } else if ("continueGame".equals(action)) {
-                loadGame();
-            } else if ("logout".equals(action)) {
-                logout();
+            switch (action) {
+                case "newGame":
+                    showDifficultySelection();
+                    break;
+                case "continueGame":
+                    loadGame();
+                    break;
+                case "logout":
+                    logout();
+                    break;
             }
         });
         return button;
     }
-    
-    private JPanel createBestTimesPanel() {
-        JPanel bestTimesPanel = new JPanel();
+
+    /**
+     * Updates the visibility of the "Continue Game" button based on saved game presence.
+     */
+    private void updateContinueGameButtonVisibility() {
+        // Show or hide the continue game button based on saved game presence
+        continueGameButton.setVisible(dbHandler.hasSavedGame(user.getUserId()));
+    }
+
+    /**
+     * Creates a panel displaying the best times for each difficulty.
+     *
+     * @return The JPanel containing the best times.
+     */
+    private void createBestTimesPanel() {
+        // Create a panel displaying the best times for each difficulty
+        bestTimesPanel = new JPanel();
         bestTimesPanel.setLayout(new BoxLayout(bestTimesPanel, BoxLayout.Y_AXIS));
-        bestTimesPanel.setBorder(BorderFactory.createTitledBorder("Best Times"));
-        bestTimesPanel.setBackground(Color.WHITE); // Set background color
-
-        // Set preferred size (width, height) - adjust height as needed
-        bestTimesPanel.setPreferredSize(new Dimension(200, 200)); // Set height to 200 pixels
-
-        // Add empty border around the panel
+        bestTimesPanel.setBackground(Color.WHITE);
+        bestTimesPanel.setPreferredSize(new Dimension(200, 200));
         bestTimesPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Best Times"), // Title border
-                BorderFactory.createEmptyBorder(10, 10, 10, 10) // Empty border: top, left, bottom, right
+                BorderFactory.createTitledBorder("Best Times"),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
 
         String[] bestTimes = user.getBestTimesAsString();
@@ -134,57 +183,101 @@ public class HomePageGUI extends JPanel {
             bestTimeLabel.setFont(new Font("Arial", Font.PLAIN, 16));
             bestTimesPanel.add(bestTimeLabel);
         }
-        return bestTimesPanel;
+    }
+    
+    /**
+    * Updates the best times displayed in the panel.
+    */
+    public void updateBestTimesPanel() {
+        // Clear existing labels from the panel
+        bestTimesPanel.removeAll();
+
+        String[] bestTimes = user.getBestTimesAsString();
+        String[] difficultyLabels = {"Beginner", "Easy", "Medium", "Hard", "Expert"};
+
+        // Add the updated best time labels to the panel
+        for (int i = 0; i < bestTimes.length; i++) {
+            JLabel bestTimeLabel = new JLabel(difficultyLabels[i] + ": " + bestTimes[i]);
+            bestTimeLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+            bestTimesPanel.add(bestTimeLabel);
+        }
+
+        // Revalidate and repaint the panel to reflect changes
+        bestTimesPanel.revalidate();
+        bestTimesPanel.repaint();
     }
 
-    private void updateContinueGameButtonVisibility() {
-        continueGameButton.setVisible(dbHandler.hasSavedGame(user.getUserId()));
-    }
+    /**
+     * Displays a dialog to select the game difficulty.
+     */
+    private void showDifficultySelection() {
+        // Display a dialog to select the game difficulty
+        DifficultyGUI difficultyGUI = new DifficultyGUI();
+        
+        int option = JOptionPane.showConfirmDialog(
+                frame,
+                difficultyGUI,
+                "Select Difficulty",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
 
-    private void startNewGame() {
-        DifficultyGUI difficultyGUI = new DifficultyGUI(); // Create a new instance of DifficultyGUI
-
-        // Show the DifficultyGUI in a dialog
-        int option = JOptionPane.showConfirmDialog(frame, difficultyGUI, 
-                "Select Difficulty", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-        // If the user clicks OK, retrieve the selected difficulty value
         if (option == JOptionPane.OK_OPTION) {
             int difficultyValue = difficultyGUI.getSelectedDifficultyValue();
             if (difficultyValue != -1) {
-                GameGUI gamePage = new GameGUI(frame, cardLayout, user, difficultyValue);
-                cardPanel.add(gamePage, "gamePage");
-                cardLayout.show(cardPanel, "gamePage");
+                startNewGame(difficultyValue);
             } else {
                 JOptionPane.showMessageDialog(frame, "Please select a difficulty level.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    private void loadGame() {
-        HashMap<String, String> boardData = dbHandler.getSavedGame(user.getUserId());
+    /**
+     * Starts a new game with the selected difficulty.
+     *
+     * @param difficultyValue The value representing the selected difficulty level.
+     */
+    private void startNewGame(int difficultyValue) {
+        // Start a new game with the selected difficulty
+        GameGUI gamePage = new GameGUI(frame, cardLayout, user, difficultyValue, this);
+        cardPanel.add(gamePage, "gamePage");
+        cardLayout.show(cardPanel, "gamePage");
+    }
 
-        if (boardData != null) {
-            loadSavedGame(boardData);
+    /**
+     * Loads a saved game if available.
+     */
+    private void loadGame() {
+        // Load a saved game if available
+        if (dbHandler.hasSavedGame(user.getUserId())) {
+            loadSavedGame();
         } else {
             JOptionPane.showMessageDialog(frame, "No saved game found.", "Load Game", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
-    private void loadSavedGame(HashMap<String, String> boardData) {
-        Board board = new Board();
-        board.loadBoard(boardData.get("puzzleBoard"));
-        
-        Board completeBoard = new CompleteBoard();
-        completeBoard.loadBoard(boardData.get("completedBoard"));
-
-        GameGUI gamePage = new GameGUI(frame, cardLayout, user);
+    /**
+     * Loads the saved game.
+     */
+    private void loadSavedGame() {
+        // Load the saved game
+        GameGUI gamePage = new GameGUI(frame, cardLayout, user, this);
         cardPanel.add(gamePage, "gamePage");
         cardLayout.show(cardPanel, "gamePage");
     }
 
+    /**
+     * Logs out the user and returns to the main Sudoku GUI.
+     */
     private void logout() {
-        frame.dispose(); // Close the current frame
-        new SudokuGUI(); // Reopen SudokuGUI
+        // Logout and return to the main Sudoku GUI
+        frame.dispose();
+        new SudokuGUI();
+    }
+    
+    public void refreshData() {
+        this.user = dbHandler.getUser(user.getUsername());
+        updateContinueGameButtonVisibility();
+        updateBestTimesPanel();
     }
 }

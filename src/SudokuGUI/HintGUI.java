@@ -9,6 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
+ * Represents the hint GUI for GameGUI.
  *
  * @author paige
  */

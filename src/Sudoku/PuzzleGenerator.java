@@ -128,7 +128,7 @@ public class PuzzleGenerator {
      * 
      * @return The number of cells to remove.
      */
-    private int puzzleDifficulty() {
+    public int puzzleDifficulty() {
         switch (difficulty) {
             case 1:
                 return BEGINNER;
